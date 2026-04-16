@@ -1,0 +1,91 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  items     Item[]
+}
+
+model Location {
+  id          Int        @id @default(autoincrement())
+  name        String
+  type        String     // room | shelf | drawer | box | cabinet | other
+  description String?
+  parentId    Int?
+  parent      Location?  @relation("LocationTree", fields: [parentId], references: [id])
+  children    Location[] @relation("LocationTree")
+  items       Item[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Item {
+  id             Int            @id @default(autoincrement())
+  name           String
+  description    String?
+  brand          String?
+  model          String?
+  serialNumber   String?
+  barcode        String?
+  category       String?
+  condition      String?        // new | like_new | good | fair | poor
+  purchasePrice  Float?
+  estimatedValue Float?
+  purchaseDate   DateTime?
+  notes          String?
+  locationId     Int?
+  location       Location?      @relation(fields: [locationId], references: [id])
+  userId         Int
+  user           User           @relation(fields: [userId], references: [id])
+  images         ItemImage[]
+  priceHistory   PriceHistory[]
+  tags           ItemTag[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model ItemImage {
+  id        Int      @id @default(autoincrement())
+  itemId    Int
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  filename  String
+  url       String
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model PriceHistory {
+  id        Int      @id @default(autoincrement())
+  itemId    Int
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  price     Float
+  source    String   // upcitemdb | manual | claude
+  checkedAt DateTime @default(now())
+}
+
+model Tag {
+  id    Int       @id @default(autoincrement())
+  name  String    @unique
+  items ItemTag[]
+}
+
+model ItemTag {
+  itemId Int
+  tagId  Int
+  item   Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, tagId])
+}

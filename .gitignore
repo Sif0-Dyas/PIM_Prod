@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.local
+*.log
+client/build/
+server/uploads/items/*
+!server/uploads/items/.gitkeep
+server/logs/
+prisma/migrations/

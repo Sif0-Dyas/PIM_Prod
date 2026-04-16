@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pim_postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pim_db}
+      POSTGRES_USER: ${POSTGRES_USER:-pimuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pimpassword}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pim_network
+    restart: unless-stopped
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: pim_server
+    ports:
+      - "8003:8000"
+    depends_on:
+      - postgres
+    environment:
+      NODE_ENV: development
+      PORT: 8000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pimuser}:${POSTGRES_PASSWORD:-pimpassword}@postgres:5432/${POSTGRES_DB:-pim_db}
+      CLIENT_URL: http://localhost:3002
+      JWT_SECRET: ${JWT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+      - ./server/uploads:/app/uploads
+    networks:
+      - pim_network
+    restart: unless-stopped
+    command: npm run dev
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: pim_client
+    ports:
+      - "3002:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:8003/api
+      WDS_SOCKET_HOST: localhost
+      WDS_SOCKET_PORT: 3002
+      WDS_SOCKET_PATH: /ws
+      DANGEROUSLY_DISABLE_HOST_CHECK: "true"
+      ESLINT_NO_DEV_ERRORS: "true"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    networks:
+      - pim_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  pim_network:
+    driver: bridge
